@@ -377,4 +377,4 @@ CLK → FF(state) → Combinational Logic (next_state) → FF(state)
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2026-01-08 | Copilot | Initial documentation |
+| 1.0 | 2026-01-08 | K14 | Initial documentation |
