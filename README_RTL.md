@@ -131,6 +131,25 @@ Simple-GAN-3x3_K14/
 
 ## Architecture
 
+> **📊 Complete architecture diagrams (FSM, datapath, timing) available in:** [docs/DIAGRAMS.md](docs/DIAGRAMS.md)
+
+### FSM State Diagram
+
+See [docs/DIAGRAMS.md](docs/DIAGRAMS.md) for interactive Mermaid diagrams including:
+- FSM State Machine
+- Datapath Block Diagram  
+- Timing Sequence Diagram
+- Network Architecture
+- Memory Organization
+
+**State Encoding:**
+- `IDLE` = 3'b000 (Waiting for start)
+- `COMPUTE_GEN` = 3'b001 (Capturing Generator output)
+- `COMPUTE_DISC` = 3'b010 (Capturing Discriminator output)
+- `DONE_STATE` = 3'b011 (Asserting done signal)
+
+**Total Latency:** 2 clock cycles (COMPUTE_GEN + COMPUTE_DISC)
+
 ### Non-Shared Hardware (Current Implementation)
 ```
 Clock 0: IDLE → COMPUTE_GEN
@@ -420,38 +439,56 @@ Testbench displays results in multiple formats:
 
 ### Timing Diagram
 
-```
-         ┌─┐   ┌─┐   ┌─┐   ┌─┐   ┌─┐
-clk      ┘ └───┘ └───┘ └───┘ └───┘ └
-         
-                ┌───────────┐
-start    ───────┘           └───────────
-         
-state    IDLE   GEN   DISC  DONE  IDLE
-         
-                      ┌─────┐
-gen_valid ────────────┘     └───────────
-         
-                            ┌─────┐
-disc_valid ─────────────────┘     └─────
-         
-                            ┌───────────
-done     ───────────────────┘           
-         
-         ← t0 →← t1 →← t2 →← t3 →
-         
-Cycle 0: Assert start
-Cycle 1: Generator computes (combinational)
-Cycle 2: Discriminator computes (combinational)
-Cycle 3: Done asserted, results valid
+```mermaid
+sequenceDiagram
+    participant TB as Testbench
+    participant FSM as FSM Control
+    participant Gen as Generator<br/>(Combinational)
+    participant Disc as Discriminator<br/>(Combinational)
+    
+    Note over TB,Disc: Reset Phase
+    TB->>FSM: rst_n = 0
+    FSM->>FSM: state = IDLE
+    
+    Note over TB,Disc: Test Stimulus
+    TB->>FSM: rst_n = 1
+    TB->>Gen: noise_0, noise_1
+    TB->>FSM: start = 1
+    
+    Note over TB,Disc: Cycle 1: COMPUTE_GEN
+    FSM->>FSM: state → COMPUTE_GEN
+    Gen->>Gen: Compute (0 cycles)<br/>All MACs parallel
+    Gen-->>FSM: gen_out[8:0] ready
+    FSM->>FSM: Capture gen_out<br/>gen_valid = 1
+    
+    Note over TB,Disc: Cycle 2: COMPUTE_DISC
+    FSM->>FSM: state → COMPUTE_DISC
+    FSM->>Disc: gen_image[8:0]
+    Disc->>Disc: Compute (0 cycles)<br/>All MACs parallel
+    Disc-->>FSM: disc_out ready
+    FSM->>FSM: Capture disc_out<br/>disc_valid = 1
+    
+    Note over TB,Disc: Cycle 3: DONE
+    FSM->>FSM: state → DONE_STATE
+    FSM->>TB: done = 1
+    TB->>FSM: start = 0
+    
+    Note over TB,Disc: Return to IDLE
+    FSM->>FSM: state → IDLE
+    FSM->>TB: done = 0
 ```
 
-**Timing Details:**
-- **Setup time**: 1 cycle (start assertion)
-- **Compute time**: 2 cycles (gen + disc)
-- **Hold time**: Until start de-asserted
-- **Total latency**: 2 cycles from start to done
-- **Throughput**: 0.5 inferences/cycle (50% efficiency)
+**Signal Flow:**
+1. **T0**: Apply inputs (noise, start=1)
+2. **T1**: Generator computes → capture output
+3. **T2**: Discriminator computes → capture output  
+4. **T3**: Assert done, wait for ack
+5. **T4**: Return to IDLE
+
+**Critical Observation:**
+- Computation is **instantaneous** (combinational)
+- Clock only for **synchronization** and **output capture**
+- No clock needed for arithmetic operations
 
 ### Waveform Analysis (GTKWave)
 
