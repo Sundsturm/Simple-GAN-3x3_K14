@@ -78,10 +78,10 @@ module simple_gan_tb;
     initial begin
         sample_file_exists = 0;
         // Try to load sample inputs
-        $readmemh("parameters/input_sample_00.txt", sample_inputs);
+        $readmemh("parameters/input_sample_00_q15.hex", sample_inputs);
         if (sample_inputs[0] !== 16'hxxxx) begin
             sample_file_exists = 1;
-            $display("[INFO] Loaded sample inputs from input_sample_00.txt");
+            $display("[INFO] Loaded sample inputs from input_sample_00_q15.hex");
         end else begin
             $display("[WARN] Sample input file not found, using random values");
         end

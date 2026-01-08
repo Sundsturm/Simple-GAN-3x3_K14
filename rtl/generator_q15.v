@@ -41,10 +41,10 @@ module generator_q15 (
     reg signed [15:0] bg3 [0:8];   // Layer 3 biases
     
     initial begin
-        $readmemh("parameters/Wg2.txt", Wg2);
-        $readmemh("parameters/bg2.txt", bg2);
-        $readmemh("parameters/Wg3.txt", Wg3);
-        $readmemh("parameters/bg3.txt", bg3);
+        $readmemh("parameters/Wg2_q15.hex", Wg2);
+        $readmemh("parameters/bg2_q15.hex", bg2);
+        $readmemh("parameters/Wg3_q15.hex", Wg3);
+        $readmemh("parameters/bg3_q15.hex", bg3);
     end
 
     // ========================================================================

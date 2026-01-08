@@ -40,10 +40,10 @@ module discriminator_q15 (
     reg signed [15:0] bd3 [0:0];   // Layer 3 bias
     
     initial begin
-        $readmemh("parameters/Wd2.txt", Wd2);
-        $readmemh("parameters/bd2.txt", bd2);
-        $readmemh("parameters/Wd3.txt", Wd3);
-        $readmemh("parameters/bd3.txt", bd3);
+        $readmemh("parameters/Wd2_q15.hex", Wd2);
+        $readmemh("parameters/bd2_q15.hex", bd2);
+        $readmemh("parameters/Wd3_q15.hex", Wd3);
+        $readmemh("parameters/bd3_q15.hex", bd3);
     end
 
     // ========================================================================
