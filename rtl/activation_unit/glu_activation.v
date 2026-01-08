@@ -1,6 +1,6 @@
 // Simpan sebagai glu_activation.v
 `timescale 1ns/1ps
-`include "pwl_sigmoid.v" 
+// `include "pwl_sigmoid.v"  // Removed: file included via command line
 
 module glu_activation (
     input  wire signed [15:0] d_in,   
