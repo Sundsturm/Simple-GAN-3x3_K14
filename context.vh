@@ -34,25 +34,36 @@
 //   Layer 3: FC(3->1) + sigmoid
 //   Parameters: Wd2[3x9], bd2[3], Wd3[1x3], bd3[1]
 
-// CORE MODULES:
-// - neuron: single neuron (MAC + bias + activation).
-// - fc_layer: fully-connected layer with N neurons.
-// - mac_unit: multiply-accumulate with Q1.15 fixed-point saturation.
-// - tanh_approx_q15: piecewise-linear tanh approximation.
-// - sigmoid_approx_q15: piecewise-linear sigmoid approximation.
-// - weight_mem / bias_mem: reg-array-based memory initialized via $readmemh.
+// CORE MODULES (Simple Implementation):
+// - tanh_approx_q15: piecewise-linear tanh approximation (already exists).
+// - sigmoid_approx_q15: piecewise-linear sigmoid approximation (already exists).
+// - neuron_q15: single neuron with inline MAC (no separate MAC unit needed).
+//   * Performs: y = activation(W*x + b) where W,x are vectors
+//   * MAC inline: accumulate products directly in the neuron
+// - fc_layer_q15: fully-connected layer with multiple neurons.
+//   * Simple instantiation of N neurons with shared input
+//   * No complex hardware sharing needed due to small size
+
+// NOTE: For this tiny network (33 weights total), we do NOT need:
+// - Separate mac_unit module (inline MAC is simpler)
+// - Complex weight_mem management (just reg arrays)
+// - Hardware sharing or pipeline stages (combinational is fine)
+// - FSM per layer (simple top-level FSM is sufficient)
 
 // GENERATOR G MODULES:
-// - generator_layer2: FC(2->3) + tanh
-// - generator_layer3: FC(3->9) + tanh
+// - generator_layer2: FC(2->3) + tanh (inline implementation)
+// - generator_layer3: FC(3->9) + tanh (inline implementation)
 // - generator_top: structural wrapper for Generator G.
-// - generator_fsm: FSM sequencing Generator layers (L2 -> L3 -> done).
 
 // DISCRIMINATOR D MODULES:
-// - discriminator_layer2: FC(9->3) + tanh
-// - discriminator_layer3: FC(3->1) + sigmoid
+// - discriminator_layer2: FC(9->3) + tanh (inline implementation)
+// - discriminator_layer3: FC(3->1) + sigmoid (inline implementation)
 // - discriminator_top: structural wrapper for Discriminator D.
-// - discriminator_fsm: FSM sequencing Discriminator layers (L2 -> L3 -> done).
+
+// SYSTEM TOP:
+// - simple_gan_top: top-level module with simple FSM
+//   * States: IDLE -> GEN_L2 -> GEN_L3 -> DISC_L2 -> DISC_L3 -> DONE
+//   * No complex hierarchical FSM needed for this small design
 
 // DESIGN STYLE RULES:
 // - Separate datapath and control clearly.
@@ -71,22 +82,25 @@
 // MEMORY RULES:
 // - .txt files contain hex values (Q1.15 format).
 // - Use $readmemh to initialize weight/bias memories.
-// - Memory must be explicitly declared as reg arrays in Verilog.
+// - Memory declared as simple reg arrays (no need for complex memory controller).
 // - Weights are pre-quantized offline (see extract_gan_parameters.py).
 // - Memory initialization example:
-//   reg signed [15:0] weight_mem [0:5]; // 6 weights
-//   initial $readmemh("Wg2.txt", weight_mem);
+//   reg signed [15:0] Wg2_mem [0:5]; // Wg2: 3x2 = 6 weights
+//   initial $readmemh("Wg2.txt", Wg2_mem);
+// - Access pattern: simple indexing, no banking needed for this size
 
 // FSM RULES:
 // - Use explicit state encoding with localparam.
 // - One always block for state register (sequential logic).
 // - One always block for next-state logic (combinational).
 // - One always block for output/control signals (combinational).
-// - State naming: IDLE, LOAD_INPUTS, COMPUTE_L2, COMPUTE_L3, DONE
+// - Simple state sequence: IDLE -> GEN_L2 -> GEN_L3 -> DISC_L2 -> DISC_L3 -> DONE
 // - Use start/done handshake protocol:
 //   * External module asserts 'start' signal
 //   * FSM asserts 'done' when computation finished
 //   * FSM returns to IDLE after 'done' acknowledged
+// - For this small network, a single top-level FSM is sufficient
+//   (no need for hierarchical FSMs)
 
 // FIXED-POINT ARITHMETIC (Q1.15):
 // - Format: 1 sign bit + 15 fractional bits
